@@ -57,8 +57,8 @@ final class ChatModel: ObservableObject {
     @Published var steStyle = UserDefaults.standard.object(forKey: "steStyle") as? Bool ?? false {
         didSet { UserDefaults.standard.set(steStyle, forKey: "steStyle") }
     }
-    /// Speculative decoding with a draft-head copy of the model (scripts/add_draft_head.py). Off by default: on the
-    /// iPad it was 0-10% faster with realistic prompts (2026-10-29).
+    /// Speculative decoding with a draft-head copy of the model (scripts/add_draft_head.py of llamacpp-apple5-lfm3).
+    /// Off by default: in the A12Z benchmark it was +1% to +11% faster, depending on the prompt (2026-10-31).
     @Published private(set) var speculative = UserDefaults.standard.bool(forKey: "chatSpec") {
         didSet { UserDefaults.standard.set(speculative, forKey: "chatSpec") }
     }
@@ -66,7 +66,12 @@ final class ChatModel: ObservableObject {
     @Published private(set) var currentID: UUID?
     @Published private(set) var status = "No model loaded"
     @Published private(set) var stats = ChatEngine.Stats()
+    /// Why the last reply ended early (context full, stopped, decode failed); the status strip shows it until the
+    /// next message.
+    @Published private(set) var notice: String?
+    #if DEBUG
     @Published private(set) var remote = false
+    #endif
     /// The conversation list; closed at launch.
     @Published var showSidebar = false
     /// ProcessInfo.thermalState, updated when iOS reports a change.
@@ -78,7 +83,9 @@ final class ChatModel: ObservableObject {
     private var engine: ChatEngine?
     /// The conversation whose turns are in the KV cache. Main thread only.
     private var cachedID: UUID?
+    #if DEBUG
     private var remoteTimer: Timer?
+    #endif
     private static let store = Util.documents.appendingPathComponent("conversations.json")
 
     var busy: Bool { loading || generating }
@@ -89,8 +96,9 @@ final class ChatModel: ObservableObject {
     /// Q8_0 one with the same acceptance (2026-10-29).
     var draftFile: String? { files.first { $0.contains("draftq4") } ?? files.first { $0.contains("draft") } }
 
-    /// The files the model menu offers: with speculative decoding the copies with a draft head, else the others.
-    var menuFiles: [String] { files.filter { $0.contains("draft") == speculative } }
+    /// The files the model menu offers: with speculative decoding only the copies with a draft head, else all files.
+    /// Without speculative decoding, a copy with a draft head runs as the plain model.
+    var menuFiles: [String] { speculative ? files.filter { $0.contains("draft") } : files }
 
     /// The STE setting of the current conversation, or of the next one while it is empty.
     var steActive: Bool {
@@ -112,14 +120,15 @@ final class ChatModel: ObservableObject {
     }
 
     func refresh() {
-        let names = (try? FileManager.default.contentsOfDirectory(atPath: Util.documents.path)) ?? []
-        files = names.filter { $0.hasSuffix(".gguf") }.sorted()
-        // The Q8_0 embedding file was the fastest on the A12Z (2026-10-28); its copy with the 1-bit output sketch
-        // generated 13% faster with the same tokens (2026-10-29).
+        files = Util.modelFiles()
         if speculative && draftFile == nil { speculative = false }
         if !menuFiles.contains(selected) {
+            // The Q8_0 embedding file was the fastest on the A12Z (2026-10-28); its copy with the 1-bit output
+            // sketch generated 13% faster with the same tokens (2026-10-29). Without speculative decoding, a copy
+            // without a draft head comes first: it loads a little less.
+            let plain = menuFiles.filter { !$0.contains("draft") } + menuFiles.filter { $0.contains("draft") }
             selected = speculative ? draftFile ?? ""
-                : menuFiles.first { $0.contains("sketch") } ?? menuFiles.first { $0.contains("embQ8") } ?? menuFiles.first ?? ""
+                : plain.first { $0.contains("sketch") } ?? plain.first { $0.contains("embQ8") } ?? plain.first ?? ""
         }
     }
 
@@ -129,6 +138,7 @@ final class ChatModel: ObservableObject {
         // the draft head runs only with a file that has one
         let speculative = self.speculative && name.contains("draft")
         loading = true
+        notice = nil
         cachedID = nil
         status = "Loading \(name)"
         queue.async { [weak self] in
@@ -152,6 +162,7 @@ final class ChatModel: ObservableObject {
     func setSpeculative(_ on: Bool) {
         guard !busy, on != speculative, !on || draftFile != nil else { return }
         speculative = on
+        selected = ""
         refresh()
         if loaded != nil { load() }
     }
@@ -168,6 +179,7 @@ final class ChatModel: ObservableObject {
     /// Selects an empty conversation, or creates one.
     func newChat() {
         guard !busy else { return }
+        notice = nil
         if let empty = conversations.first(where: { $0.messages.isEmpty }) {
             currentID = empty.id
             return
@@ -179,6 +191,7 @@ final class ChatModel: ObservableObject {
 
     func select(_ id: UUID?) {
         guard !busy, let id else { return }
+        notice = nil
         currentID = id
     }
 
@@ -209,6 +222,7 @@ final class ChatModel: ObservableObject {
         conversations[index].updated = Date()
         generating = true
         stats = ChatEngine.Stats()
+        notice = nil
         stopFlag.set(false)
         UIApplication.shared.isIdleTimerDisabled = true
         status = prime.map { $0.isEmpty ? "Reading the prompt" : "Reading \($0.count) earlier turns" } ?? "Reading the prompt"
@@ -251,11 +265,12 @@ final class ChatModel: ObservableObject {
         generating = false
         UIApplication.shared.isIdleTimerDisabled = false
         switch outcome {
-        case .done: status = describe(stats)
-        case .stopped: status = "Stopped. " + describe(stats)
-        case .contextFull: status = "Context full (\(ChatEngine.context) tokens). Start a new chat."
-        case .failed: status = "Decode failed, see llama-log.txt"
+        case .done: notice = nil
+        case .stopped: notice = "Stopped"
+        case .contextFull: notice = "Context full (\(ChatEngine.context) tokens). Start a new chat."
+        case .failed: notice = "Decode failed, see llama-log.txt"
         }
+        status = outcome == .done || outcome == .stopped ? describe(stats) : notice ?? ""
         if let index = conversations.firstIndex(where: { $0.id == id }), stats.tokens > 0,
            let last = conversations[index].messages.indices.last, !conversations[index].messages[last].user {
             conversations[index].messages[last].tokens = stats.tokens
@@ -284,6 +299,7 @@ final class ChatModel: ObservableObject {
 
     // MARK: Remote control
 
+    #if DEBUG
     private static let remoteDir = Util.documents.appendingPathComponent("remote")
 
     /// Debug builds only, with the launch argument `-remote 1`: each second the app reads remote/command.json,
@@ -361,6 +377,7 @@ final class ChatModel: ObservableObject {
             try? data.write(to: ChatModel.remoteDir.appendingPathComponent("state.json"), options: .atomic)
         }
     }
+    #endif
 }
 
 /// Type sizes of the chat, a little smaller than the system body text.
@@ -510,14 +527,16 @@ struct ChatView: View {
                             in: RoundedRectangle(cornerRadius: 9))
             VStack(alignment: .leading, spacing: 1) {
                 Text(model.loaded.map(ModelName.title) ?? "No model loaded").font(.system(size: 14, weight: .semibold))
-                Text("A12Z GPU · Metal Apple5").font(Typo.small).foregroundStyle(.secondary)
+                Text(Util.gpuName).font(Typo.small).foregroundStyle(.secondary)
             }
             Spacer()
+            #if DEBUG
             if model.remote {
                 Image(systemName: "dot.radiowaves.left.and.right")
                     .foregroundStyle(.orange)
                     .help("Remote control is on")
             }
+            #endif
         }
         .padding(12)
         .glass(RoundedRectangle(cornerRadius: 16))
@@ -562,8 +581,11 @@ struct ChatView: View {
             } else if model.loaded == nil || model.loading {
                 Pill(icon: model.loading ? "hourglass" : "moon.zzz", text: model.status, tint: .secondary)
             } else if model.stats.used == 0 && !model.generating {
-                Pill(icon: "checkmark.circle.fill", text: "Ready · " + model.status, tint: .green)
+                Pill(icon: "checkmark.circle.fill", text: model.notice == nil ? "Ready · " + model.status : "Ready",
+                     tint: .green)
+                noticePill
             } else {
+                noticePill
                 Pill(icon: "bolt.fill", text: String(format: "%.1f tok/s", model.stats.generateRate), tint: .green)
                 if model.stats.verifies > 0 {
                     Pill(icon: "hare.fill", text: String(format: "draft %.0f%%",
@@ -583,11 +605,18 @@ struct ChatView: View {
         .animation(.default, value: model.loaded)
     }
 
+    /// Why the last reply ended early, if it did.
+    @ViewBuilder private var noticePill: some View {
+        if let notice = model.notice {
+            Pill(icon: "exclamationmark.triangle.fill", text: notice, tint: .orange)
+        }
+    }
+
     private var contextPill: some View {
         let fraction = Double(model.stats.used) / Double(ChatEngine.context)
         return HStack(spacing: 6) {
             Image(systemName: "square.stack.3d.up")
-            Text(String(format: "%.1fk / %dk", Double(model.stats.used) / 1000, ChatEngine.context / 1024))
+            Text(String(format: "%.1fk / %dk", Double(model.stats.used) / 1024, ChatEngine.context / 1024))
             ProgressView(value: fraction).frame(width: 46).tint(fraction > 0.85 ? .orange : .accentColor)
         }
         .padding(.horizontal, 10)
@@ -612,8 +641,10 @@ struct ChatView: View {
                     .foregroundStyle(.tint)
                     .frame(width: 84, height: 84)
                     .background(Color.accentColor.opacity(0.12), in: Circle())
-                Text("LFM3 1.7B on this iPad").font(.system(size: 22, weight: .semibold))
-                Text(model.loaded == nil
+                Text("LFM3 1.7B on this device").font(.system(size: 22, weight: .semibold))
+                Text(model.files.isEmpty
+                     ? "No model file. Copy a GGUF file to LFM3 Bench with Finder (device > Files)."
+                     : model.loaded == nil
                      ? "Load the model to start. It runs on the GPU. Nothing leaves the device."
                      : "Ask a question. Turn on Think for hard questions.")
                     .font(Typo.body)

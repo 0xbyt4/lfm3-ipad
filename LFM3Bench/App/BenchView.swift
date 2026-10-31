@@ -16,24 +16,36 @@ final class BenchModel: ObservableObject {
     private var autoStarted = false
 
     func refresh() {
-        let names = (try? FileManager.default.contentsOfDirectory(atPath: Util.documents.path)) ?? []
-        files = names.filter { $0.hasSuffix(".gguf") }.sorted()
+        files = Util.modelFiles()
     }
 
     /// Runs the given files one after another on the bench queue.
     func run(_ names: [String]) {
-        guard !running, !names.isEmpty, ChatModel.shared.loaded == nil, !ChatModel.shared.busy else { return }
+        guard !running, ChatModel.shared.loaded == nil, !ChatModel.shared.busy else { return }
+        guard !names.isEmpty else {
+            append("no model file to run in Documents")
+            return
+        }
+        var options = BenchOptions(seconds: seconds, waitCool: waitCool)
+        options.speculative = UserDefaults.standard.bool(forKey: "spec")
+        if let file = UserDefaults.standard.string(forKey: "prompts") {
+            guard let text = try? String(contentsOf: Util.documents.appendingPathComponent(file), encoding: .utf8)
+            else {
+                append("prompts file not found: \(file)")
+                return
+            }
+            options.prompts = text.components(separatedBy: "\n%%\n")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+            guard !options.prompts.isEmpty else {
+                append("no prompts in \(file)")
+                return
+            }
+            options.promptsFile = file
+        }
         running = true
         stopFlag.set(false)
         UIApplication.shared.isIdleTimerDisabled = true
         lag.start()
-        var options = BenchOptions(seconds: seconds, waitCool: waitCool)
-        options.speculative = UserDefaults.standard.bool(forKey: "spec")
-        if let file = UserDefaults.standard.string(forKey: "prompts"),
-           let text = try? String(contentsOf: Util.documents.appendingPathComponent(file), encoding: .utf8) {
-            options.prompts = text.components(separatedBy: "\n%%\n")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-        }
         let bench = Bench(stop: stopFlag, lag: lag) { [weak self] line in
             DispatchQueue.main.async { self?.append(line) }
         }
@@ -59,6 +71,7 @@ final class BenchModel: ObservableObject {
     func trace(_ name: String) {
         guard !running, ChatModel.shared.loaded == nil, !ChatModel.shared.busy else { return }
         running = true
+        stopFlag.set(false)
         let bench = Bench(stop: stopFlag, lag: lag) { [weak self] line in
             DispatchQueue.main.async { self?.append(line) }
         }
@@ -75,6 +88,7 @@ final class BenchModel: ObservableObject {
     func depth(_ name: String) {
         guard !running, ChatModel.shared.loaded == nil, !ChatModel.shared.busy else { return }
         running = true
+        stopFlag.set(false)
         let bench = Bench(stop: stopFlag, lag: lag) { [weak self] line in
             DispatchQueue.main.async { self?.append(line) }
         }
@@ -93,6 +107,7 @@ final class BenchModel: ObservableObject {
     func verifyCost(_ name: String) {
         guard !running, ChatModel.shared.loaded == nil, !ChatModel.shared.busy else { return }
         running = true
+        stopFlag.set(false)
         let bench = Bench(stop: stopFlag, lag: lag) { [weak self] line in
             DispatchQueue.main.async { self?.append(line) }
         }

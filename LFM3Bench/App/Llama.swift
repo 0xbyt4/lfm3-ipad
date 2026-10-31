@@ -54,6 +54,11 @@ final class LlamaSession {
     let vocab: OpaquePointer?
     private let batch: Int
 
+    /// False with the launch argument `-mmap 0`: the weights are copied into Metal buffers instead of mapping the file.
+    static var mapsFile: Bool {
+        UserDefaults.standard.object(forKey: "mmap") == nil || UserDefaults.standard.bool(forKey: "mmap")
+    }
+
     /// `batch` bounds the tokens per decode call and, as the micro-batch, sizes the compute buffer.
     /// `trace` records every F32 tensor into llamaTraceLines; it synchronizes after each node and is slow.
     /// `speculative` runs the LFM3 draft head of the file in every decode and keeps one short-conv state snapshot,
@@ -63,8 +68,7 @@ final class LlamaSession {
         _ = LlamaRuntime.start
         var mparams = llama_model_default_params()
         mparams.n_gpu_layers = gpuLayers
-        // `-mmap 0` copies the weights into Metal buffers instead of mapping the file.
-        if UserDefaults.standard.object(forKey: "mmap") != nil, !UserDefaults.standard.bool(forKey: "mmap") {
+        if !LlamaSession.mapsFile {
             mparams.load_mode = LLAMA_LOAD_MODE_NONE
         }
         guard let model = llama_model_load_from_file(path, mparams) else { return nil }

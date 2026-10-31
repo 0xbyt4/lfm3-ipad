@@ -12,8 +12,11 @@ struct BenchOptions {
     var speculative = false
     /// Generation prompts, one after another at each restart; empty: the essay prompt.
     var prompts: [String] = []
-    /// Start position of the verify-cost run (at most ~6000: the run moves ~2000 tokens on in an 8192 context).
+    /// The Documents file of `prompts`, for the result lines; nil: the essay prompt.
+    var promptsFile: String?
+    /// Start position of the verify-cost run (the run moves 2016 tokens on in an 8192 context).
     var verifyAt = 1024
+    static let verifyAtRange = 1...6000
 }
 
 /// Measures one GGUF file: load time, prompt speed, and sustained greedy generation with heat, memory and main-thread
@@ -66,7 +69,8 @@ final class Bench {
 
         record("start", [
             "seconds": options.seconds, "context": options.context, "batch": options.batch,
-            "threads": options.threads, "gpu_layers": options.gpuLayers,
+            "threads": options.threads, "gpu_layers": options.gpuLayers, "prompts": options.promptsFile ?? "essay",
+            "speculative": options.speculative, "mmap": LlamaSession.mapsFile,
         ])
         report("== \(name)")
         if options.waitCool {
@@ -174,6 +178,10 @@ final class Bench {
     func verifyCost(path: String, options: BenchOptions) {
         let name = URL(fileURLWithPath: path).lastPathComponent
         let runID = ISO8601DateFormatter().string(from: Date())
+        guard BenchOptions.verifyAtRange.contains(options.verifyAt) else {
+            report("-at must be in \(BenchOptions.verifyAtRange.lowerBound)...\(BenchOptions.verifyAtRange.upperBound)")
+            return
+        }
         if options.waitCool { _ = waitForNominal() }
         guard let session = LlamaSession(path: path, gpuLayers: options.gpuLayers, threads: options.threads,
                                          context: 8192, batch: options.batch,
@@ -379,6 +387,7 @@ final class Bench {
             "max_thermal": maxThermal, "max_main_lag_ms": maxLag, "stopped": stop.isSet,
             "first_tokens": firstTokens, "first_text": String(decoding: firstBytes, as: UTF8.self),
             "speculative": options.speculative, "verifies": verifies, "accepted": accepted,
+            "prompts": options.promptsFile ?? "essay",
         ]
         if let seriousAt { summary["serious_at_s"] = seriousAt }
         record("summary", summary)

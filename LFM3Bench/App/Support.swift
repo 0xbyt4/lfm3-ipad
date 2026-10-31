@@ -1,8 +1,26 @@
 import Foundation
+import Metal
 import os
 
 enum Util {
     static var documents: URL { FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0] }
+
+    /// The GGUF files in Documents, sorted. Marks them as excluded from device backups: a model file is 1-2 GB and
+    /// can be downloaded again.
+    static func modelFiles() -> [String] {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: documents.path)) ?? []
+        let files = names.filter { $0.hasSuffix(".gguf") }.sorted()
+        for name in files {
+            var url = documents.appendingPathComponent(name)
+            var values = URLResourceValues()
+            values.isExcludedFromBackup = true
+            try? url.setResourceValues(values)
+        }
+        return files
+    }
+
+    /// The name of the GPU, for example "Apple A12Z GPU".
+    static let gpuName = MTLCreateSystemDefaultDevice()?.name ?? "No Metal GPU"
 
     static func footprint() -> Int {
         var info = task_vm_info_data_t()
