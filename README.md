@@ -33,7 +33,7 @@ The app uses the "Increased Memory Limit" entitlement. The author used a paid de
 1. Clone this repository and go into it.
 2. Run `scripts/setup.sh`.
 
-   The script clones the patch repository into `llamacpp-apple5-lfm3/`. Then it gets llama.cpp at the base commit and applies the patch. Then it builds `llamacpp-apple5-lfm3/llama.cpp/build-apple/llama.xcframework`. The Xcode project links this file. To use another URL for the patch repository, set `PATCH_REPO`. If `llamacpp-apple5-lfm3/` exists, the script uses it and does not clone.
+   The script clones the patch repository into `llamacpp-apple5-lfm3/` and checks out the patch commit that this app was tested with. Then it gets llama.cpp at the base commit and applies the patch. Then it builds `llamacpp-apple5-lfm3/llama.cpp/build-apple/llama.xcframework`. The Xcode project links this file. To use another URL for the patch repository, set `PATCH_REPO`. To use another patch commit, set `PATCH_REF`. If `llamacpp-apple5-lfm3/` exists, the script uses it and does not clone.
 
 3. Copy `LFM3Bench/Config/Signing.example.xcconfig` to `LFM3Bench/Config/Signing.xcconfig`.
 4. In `Signing.xcconfig`, set your team ID and a bundle identifier of your own. Xcode > Settings > Accounts shows the team ID. Git ignores this file.
