@@ -1,0 +1,4 @@
+// Copy to Config/Signing.xcconfig and set your Apple developer team ID and a bundle identifier of your own.
+// Xcode > Settings > Accounts shows the team ID.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
+PRODUCT_BUNDLE_IDENTIFIER = com.example.lfm3bench

@@ -1,0 +1,104 @@
+<|im_start|>user
+Write a bash script that backs up a folder to a tar.gz file with the date in the name, and keeps only the last 7 backups. Explain each part.<|im_end|>
+<|im_start|>assistant
+<think>
+%%
+<|im_start|>user
+Explain how a CPU cache works. Use a concrete example with a loop over an array, and explain why the loop order matters for a 2D array.<|im_end|>
+<|im_start|>assistant
+<think>
+%%
+<|im_start|>user
+Compare SQLite and PostgreSQL as the database for the backend of a small mobile app with about 10,000 users. Give a recommendation.<|im_end|>
+<|im_start|>assistant
+<think>
+%%
+<|im_start|>user
+Rewrite this email so it is polite and clear, but keep all the facts.
+
+hey, the report you sent is wrong again. the numbers in table 3 dont match the totals and the chart on page 5 uses last years data. i told you about this last week. fix it by friday because the client meeting is on monday and i cant show them this. also send me the raw data file this time, not just the pdf. thanks<|im_end|>
+<|im_start|>assistant
+<think>
+%%
+<|im_start|>user
+Convert this JSON to Swift Codable structs. Use camelCase property names with CodingKeys where needed, and show a decoding example.
+
+{
+  "user_id": 4821,
+  "display_name": "Mara",
+  "created_at": "2026-03-14T09:21:00Z",
+  "settings": {"dark_mode": true, "font_size": 15, "language": "en"},
+  "devices": [
+    {"device_id": "a1", "model": "iPad Pro", "last_seen": "2026-10-28T22:00:00Z"},
+    {"device_id": "b7", "model": "iPhone 16", "last_seen": "2026-10-29T08:12:00Z"}
+  ]
+}<|im_end|>
+<|im_start|>assistant
+<think>
+%%
+<|im_start|>user
+A shop sells pencils in packs of 12 for $3.60 and single pencils for $0.35 each. A school needs 250 pencils. What is the cheapest way to buy them and what is the total cost? Show the steps.<|im_end|>
+<|im_start|>assistant
+<think>
+%%
+<|im_start|>user
+Five people sit in a row. Anna is not at either end. Ben sits right of Carl. Dana sits next to Eve. Carl is at the left end. Eve is not next to Anna. Find the order and explain the reasoning.<|im_end|>
+<|im_start|>assistant
+<think>
+%%
+<|im_start|>user
+Refactor this Python code. Remove the duplication, add type hints, and keep the behavior the same. Show the full new code.
+
+def load_users(path):
+    f = open(path)
+    lines = f.readlines()
+    f.close()
+    users = []
+    for line in lines:
+        line = line.strip()
+        if line == "":
+            continue
+        parts = line.split(",")
+        users.append({"name": parts[0], "email": parts[1], "age": int(parts[2])})
+    return users
+
+def load_orders(path):
+    f = open(path)
+    lines = f.readlines()
+    f.close()
+    orders = []
+    for line in lines:
+        line = line.strip()
+        if line == "":
+            continue
+        parts = line.split(",")
+        orders.append({"id": int(parts[0]), "user": parts[1], "total": float(parts[2])})
+    return orders
+
+def load_products(path):
+    f = open(path)
+    lines = f.readlines()
+    f.close()
+    products = []
+    for line in lines:
+        line = line.strip()
+        if line == "":
+            continue
+        parts = line.split(",")
+        products.append({"sku": parts[0], "title": parts[1], "price": float(parts[2])})
+    return products
+<|im_end|>
+<|im_start|>assistant
+<think>
+%%
+<|im_start|>user
+Summarize the following text in five bullet points.
+
+Small phones and tablets slow down when they get warm. The chip has sensors that report the temperature of each part, and the operating system lowers the clock speed when a limit is near. This protects the battery and keeps the case comfortable to hold. For a language model that runs on the device, the effect is direct: each new word needs one pass over all the weights, and the time of that pass depends on the memory clock and the GPU clock. In a short test the device is cool and the speed is high. In a long chat the device warms up, and the speed can drop by ten to twenty percent before the operating system reports any thermal state at all. A fair benchmark must therefore wait until the device is cool, run the variants in an alternating order, and repeat each variant. Otherwise the order of the runs decides the result, and a small kernel change can look like a gain or a loss that is really only heat. Engineers also use short, isolated timing loops for one operation, because such a loop finishes before the clock changes.<|im_end|>
+<|im_start|>assistant
+<think>
+%%
+<|im_start|>user
+Write a Swift function that parses one CSV line with quoted fields and escaped quotes. Add a few unit tests with XCTest.<|im_end|>
+<|im_start|>assistant
+<think>

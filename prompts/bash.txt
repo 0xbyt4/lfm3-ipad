@@ -1,0 +1,4 @@
+<|im_start|>user
+Write a bash script that backs up a folder to a tar.gz file with the date in the name, and keeps only the last 7 backups. Explain each part.<|im_end|>
+<|im_start|>assistant
+<think>

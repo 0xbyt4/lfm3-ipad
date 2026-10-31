@@ -1,0 +1,4 @@
+<|im_start|>user
+A shop sells pencils in packs of 12 for $3.60 and single pencils for $0.35 each. A school needs 250 pencils. What is the cheapest way to buy them and what is the total cost? Show the steps.<|im_end|>
+<|im_start|>assistant
+<think>

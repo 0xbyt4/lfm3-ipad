@@ -1,0 +1,3 @@
+// Defaults for a build without signing settings; Config/Signing.xcconfig (see Signing.example.xcconfig) overrides them.
+PRODUCT_BUNDLE_IDENTIFIER = com.example.lfm3bench
+#include? "Signing.xcconfig"

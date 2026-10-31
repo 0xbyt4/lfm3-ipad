@@ -1,0 +1,11 @@
+.DS_Store
+/llamacpp-apple5-lfm3/
+LFM3Bench/Config/Signing.xcconfig
+LFM3Bench/build/
+xcuserdata/
+DerivedData/
+*.gguf
+*.safetensors
+*.ipa
+*.xcarchive
+.ruff_cache/
