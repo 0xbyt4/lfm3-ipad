@@ -52,10 +52,10 @@ To check the build without signing, add `CODE_SIGNING_ALLOWED=NO` and remove `-a
 
 The app loads GGUF files from its Documents folder.
 
-1. Prepare a model file. See "Prepare a model" in the README of the patch repository.
+1. Download the model files from [0xbyt4/LFM3-1.7B-Apple5-GGUF](https://huggingface.co/0xbyt4/LFM3-1.7B-Apple5-GGUF). To prepare the files yourself, see "Prepare a model" in the README of the patch repository.
 2. Connect the device to the Mac.
 3. In Finder, select the device and open the Files tab.
-4. Drag the GGUF file onto "LFM3 Bench".
+4. Drag the GGUF files onto "LFM3 Bench".
 5. If the app runs, open the Bench tab and then the Chat tab again. The chat reads the file list when the Chat tab appears.
 
 With Spec off, the chat selects a file with `sketch` in its name first. Then it selects a file with `embQ8` in its name. If no file matches, it selects the first file in alphabetical order.
@@ -65,7 +65,7 @@ Files with `draft` in the name show only with Spec on. With Spec on, the chat se
 ## Use the chat
 
 - The model menu (top right) selects a file and loads or unloads it.
-- "Spec" (top left) turns on speculative decoding. The model menu then shows only the files with a draft head. Neither repository includes a draft head. Without a file with a draft head, Spec stays disabled.
+- "Spec" (top left) turns on speculative decoding. The model menu then shows only the files with a draft head. The file with a draft head is `LFM3-1.7B-QAD-Q4_0-embQ8-sketch-draftq4.gguf` on Hugging Face. Without a file with a draft head, Spec stays disabled.
 - "Think" turns the thinking of the model on or off for the next message.
 - "STE" asks the model to answer in ASD-STE100 Simplified Technical English. It applies to new chats.
 - The sidebar shows the chats. You can delete a chat there.
@@ -120,7 +120,7 @@ The prompt speed was 201 tok/s. The README of [llamacpp-apple5-lfm3](https://git
 
 To repeat a measurement:
 
-1. Copy the model file and the files in `prompts/` to the Documents folder of the app.
+1. Copy `LFM3-1.7B-QAD-Q4_0-embQ8-sketch-draftq4.gguf` and the files in `prompts/` to the Documents folder of the app.
 2. Unload the chat model.
 3. Run one variant at a time. Change the order of the variants between the runs. For example:
 
