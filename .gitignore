@@ -1,5 +1,6 @@
 .DS_Store
 /llamacpp-apple5-lfm3/
+/llamacpp-apple5-lfm3.tmp/
 LFM3Bench/Config/Signing.xcconfig
 LFM3Bench/build/
 xcuserdata/
@@ -8,4 +9,3 @@ DerivedData/
 *.safetensors
 *.ipa
 *.xcarchive
-.ruff_cache/
