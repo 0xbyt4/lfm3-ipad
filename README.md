@@ -21,10 +21,11 @@ This is an independent project. It is not affiliated with Liquid AI.
 
 ## Requirements
 
-- A Mac with Xcode 26 or later. The iOS device SDK must be installed.
+- A Mac with Xcode 26 or later. The author used Xcode 26.6 and installed the app on a device with iPadOS 27.0.1.
+- After you install Xcode, open it once. Accept the license and install the iOS platform. `xcode-select -p` must show the Xcode directory, for example `/Applications/Xcode.app/Contents/Developer`. If it shows the Command Line Tools, run `sudo xcode-select -s /Applications/Xcode.app`.
 - CMake 3.28 or later (`brew install cmake`) and git, for the llama.cpp build.
 - About 1 GB of disk space for llama.cpp and its build, and 2.3 GB for the two model files.
-- An Apple developer account, for the signing of the app.
+- An Apple account, for the signing of the app. A free account is sufficient. Add it in Xcode > Settings > Accounts.
 - A device with an A12-family chip and iOS 18 or later:
   - A12 Bionic: iPhone XS, iPhone XS Max, iPhone XR, iPad mini (5th generation), iPad Air (3rd generation), iPad (8th generation).
   - A12X Bionic: iPad Pro 11-inch (1st generation), iPad Pro 12.9-inch (3rd generation).
@@ -35,7 +36,7 @@ Newer devices can also run the app. The patch selects its compat kernels only fo
 
 The Simulator is not supported. `scripts/setup.sh` builds llama.cpp only for devices.
 
-The app uses the "Increased Memory Limit" entitlement. The author used a paid developer account. The author did not test a free account.
+The app uses the "Increased Memory Limit" entitlement. The author used a free Apple account (Personal Team). The provisioning profile that Xcode makes for a free account includes this entitlement. The profile is valid for 7 days. After 7 days, the app does not open. Then run the app from Xcode again. A paid developer account gives a profile that is valid for 1 year.
 
 ## Build the app
 
@@ -47,17 +48,35 @@ The app uses the "Increased Memory Limit" entitlement. The author used a paid de
    If `llamacpp-apple5-lfm3/` exists, the script uses it and does not clone. The directory must be at `PATCH_REF`. Else the script stops with a message. To use the directory at any commit, set `PATCH_REF=HEAD`.
 
 3. Copy `LFM3Bench/Config/Signing.example.xcconfig` to `LFM3Bench/Config/Signing.xcconfig`.
-4. In `Signing.xcconfig`, set your team ID and a bundle identifier of your own. The Membership details page of your account on developer.apple.com shows the team ID. Git ignores this file. Do not set the team in the Signing & Capabilities editor of Xcode: the editor writes the team ID into `project.pbxproj`.
-5. Open `LFM3Bench/LFM3Bench.xcodeproj` in Xcode.
-6. Select your device and run the `LFM3Bench` scheme.
+4. In `Signing.xcconfig`, set your team ID and a bundle identifier of your own. Git ignores this file. Do not set the team in the Signing & Capabilities editor of Xcode: the editor writes the team ID into `project.pbxproj`. To find the team ID:
+   - With a paid developer account: the Membership details page of your account on developer.apple.com shows it.
+   - With a free account: in Xcode > Settings > Accounts, select your account, click Manage Certificates and add an "Apple Development" certificate if there is none. Then run this command. The team ID is the `OU` value:
 
-To build from the command line:
+     ```
+     security find-certificate -c "Apple Development" -p | openssl x509 -noout -subject
+     ```
 
-```
-xcodebuild -project LFM3Bench/LFM3Bench.xcodeproj -scheme LFM3Bench -configuration Release -destination generic/platform=iOS -allowProvisioningUpdates build
-```
+5. Connect the device to the Mac with a cable. On the device, tap Trust when it asks if you trust this computer.
+6. Open `LFM3Bench/LFM3Bench.xcodeproj` in Xcode.
+7. Select your device and run the `LFM3Bench` scheme.
+8. With a free account, iOS does not open the app the first time and shows "Untrusted Developer". On the device, open Settings > General > VPN & Device Management, select your Apple account and tap Trust. Then open the app.
 
-To check the build without signing, add `CODE_SIGNING_ALLOWED=NO` and remove `-allowProvisioningUpdates`.
+To build and install from the command line:
+
+1. Build:
+
+   ```
+   xcodebuild -project LFM3Bench/LFM3Bench.xcodeproj -scheme LFM3Bench -configuration Release -destination generic/platform=iOS -derivedDataPath LFM3Bench/build -allowProvisioningUpdates build
+   ```
+
+2. Find the identifier of your device: `xcrun devicectl list devices`.
+3. Install:
+
+   ```
+   xcrun devicectl device install app --device <device> LFM3Bench/build/Build/Products/Release-iphoneos/LFM3Bench.app
+   ```
+
+If the build stops with a provisioning error, connect the device and run the app from Xcode once. To check the build without signing, add `CODE_SIGNING_ALLOWED=NO` to the build command and remove `-allowProvisioningUpdates`.
 
 ### Update
 
@@ -70,15 +89,31 @@ To check the build without signing, add `CODE_SIGNING_ALLOWED=NO` and remove `-a
 
 The app loads GGUF files from its Documents folder.
 
-1. Download the model files from [0xbyt4/LFM3-1.7B-Apple5-GGUF](https://huggingface.co/0xbyt4/LFM3-1.7B-Apple5-GGUF):
-   - `LFM3-1.7B-QAD-Q4_0-embQ8-sketch.gguf` (1.15 GB): the chat without speculative decoding.
-   - `LFM3-1.7B-QAD-Q4_0-embQ8-sketch-draftq4.gguf` (1.16 GB): the chat with speculative decoding (Spec). The benchmark results below used this file.
+The model files are on Hugging Face, in [0xbyt4/LFM3-1.7B-Apple5-GGUF](https://huggingface.co/0xbyt4/LFM3-1.7B-Apple5-GGUF):
 
-   One file is sufficient. The draftq4 file also runs without Spec. To prepare the files yourself, see "Prepare a model" in the README of the patch repository.
+- `LFM3-1.7B-QAD-Q4_0-embQ8-sketch.gguf` (1.15 GB): the chat without speculative decoding.
+- `LFM3-1.7B-QAD-Q4_0-embQ8-sketch-draftq4.gguf` (1.16 GB): the chat with speculative decoding (Spec). The benchmark results below used this file.
+
+One file is sufficient. The draftq4 file also runs without Spec. To prepare the files yourself, see "Prepare a model" in the README of the patch repository.
+
+To add a model with a Mac:
+
+1. Download the file. On the model page, open "Files and versions" and click the download icon of the file. Or use the Hugging Face CLI (`brew install hf` or `pip install -U huggingface_hub`):
+
+   ```
+   hf download 0xbyt4/LFM3-1.7B-Apple5-GGUF LFM3-1.7B-QAD-Q4_0-embQ8-sketch-draftq4.gguf --local-dir .
+   ```
+
 2. Connect the device to the Mac.
 3. In Finder, select the device and open the Files tab.
-4. Drag the GGUF files onto "LFM3 Bench".
+4. Drag the GGUF file onto "LFM3 Bench".
 5. If the app is open, tap Bench, then tap Chat. The chat reads the file list each time the Chat tab opens.
+
+To add a model without a Mac:
+
+1. On the device, open the model page in Safari and download the file from "Files and versions". Safari saves it in the Downloads folder.
+2. In the Files app, move the file to On My iPad > LFM3 Bench (On My iPhone on an iPhone).
+3. If the app is open, tap Bench, then tap Chat.
 
 With Spec off, the model menu shows all GGUF files. The chat selects a file without `draft` in its name before a file with `draft` in its name. In each of these two groups, it selects a file with `sketch` in its name first, then a file with `embQ8` in its name, then the first file in the sorted list (upper case before lower case).
 
@@ -89,7 +124,7 @@ When the app lists the GGUF files (when the Chat or Bench tab opens), it exclude
 ## Use the chat
 
 - The model menu (top right) selects a file and loads or unloads it.
-- "Spec" (top left) turns on speculative decoding. The model menu then shows only the files with a draft head. The file with a draft head is `LFM3-1.7B-QAD-Q4_0-embQ8-sketch-draftq4.gguf` on Hugging Face. Without a file with a draft head, Spec stays disabled. When you turn Spec on or off, a loaded model loads again.
+- "Spec" (top left) turns on speculative decoding. The model menu then shows only the files with `draft` in the name. The app finds a draft head only by this name. The file with a draft head is `LFM3-1.7B-QAD-Q4_0-embQ8-sketch-draftq4.gguf` on Hugging Face. Without a file with a draft head, Spec stays disabled. When you turn Spec on or off, a loaded model loads again.
 - "Think" turns the thinking of the model on or off for the next message.
 - "STE" asks the model to answer in ASD-STE100 Simplified Technical English. It applies to new chats.
 - The sidebar shows the chats. You can delete a chat there.
@@ -115,6 +150,8 @@ Launch arguments start a run when the app opens. Set them in Xcode (Product > Sc
 ```
 xcrun devicectl device process launch --device <device> <bundle-id> -- -bench all -seconds 180 -cool 1
 ```
+
+`xcrun devicectl list devices` shows the identifier of the device. `<bundle-id>` is the bundle identifier in `Signing.xcconfig`.
 
 | Arguments | Run |
 |---|---|
@@ -167,6 +204,10 @@ Without `-prompts`, the benchmark uses the essay prompt. In the chat, the author
 
 - **`Signing for "LFM3Bench" requires a development team`.** `LFM3Bench/Config/Signing.xcconfig` does not exist. Do steps 3 and 4 of "Build the app".
 - **`No Accounts` or `No profiles for '<bundle identifier>' were found`.** Xcode has no account for the team in `Signing.xcconfig`. Add your account in Xcode > Settings > Accounts, and check the team ID.
+- **`You have not agreed to the Xcode license agreements`.** Run `sudo xcodebuild -license accept`, or open Xcode and accept the license.
+- **The device is not in the device list of Xcode.** Connect the device with a cable and tap Trust on the device. Turn on Developer Mode (see "Requirements").
+- **"Untrusted Developer" when the app opens.** Do step 8 of "Build the app".
+- **The app opened before, but now it does not open.** With a free account, the provisioning profile is valid for 7 days. Run the app from Xcode again. The models and the chats stay.
 - **The model menu is empty.** Documents has no GGUF file. See "Add a model".
 - **"Load failed, see llama-log.txt".** Open the Files tab of the device in Finder and copy `llama-log.txt` to the Mac. The log shows the cause.
 - **`setup.sh` stops with "... is not at ...".** The patch repository in `llamacpp-apple5-lfm3/` is at another commit. Do the steps in "Update".
